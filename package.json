@@ -10,15 +10,16 @@
   "bugs": "https://github.com/noffle/hyperdb-index/issues",
   "main": "index.js",
   "scripts": {
+    "release": "standard-version",
     "test": "tape test/*.js",
     "lint": "standard"
   },
-  "keywords": [
-  ],
+  "keywords": [],
   "dependencies": {},
   "devDependencies": {
-    "tape": "~4.6.2",
-    "standard": "~10.0.0"
+    "standard": "~10.0.0",
+    "standard-version": "^4.2.0",
+    "tape": "~4.6.2"
   },
   "license": "ISC"
 }
