@@ -15,7 +15,9 @@
     "lint": "standard"
   },
   "keywords": [],
-  "dependencies": {},
+  "dependencies": {
+    "inherits": "^2.0.3"
+  },
   "devDependencies": {
     "standard": "~10.0.0",
     "standard-version": "^4.2.0",
