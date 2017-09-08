@@ -1,6 +1,6 @@
 {
   "name": "hyperdb-index",
-  "description": "Build an index over a hyperdb key prefix.",
+  "description": "Build a realtime index over a hyperdb key prefix.",
   "author": "Stephen Whitmore <sww@eight.net>",
   "version": "0.0.0",
   "repository": {
