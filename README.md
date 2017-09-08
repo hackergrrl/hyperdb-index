@@ -2,8 +2,6 @@
 
 > Build an index over a [hyperdb][hyperdb].
 
-background details relevant to understanding what this module does
-
 ## Usage
 
 Let's build an index that tracks all `node`s in a [spatial point
