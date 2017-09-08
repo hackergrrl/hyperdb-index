@@ -51,7 +51,7 @@ Index.prototype._run = function () {
     self._getSnapshot(function (err, snapshot) {
       if (err) return self.emit('error', err)
 
-      var stream = self._db.createDiffStream(self._prefix, snapshot, { head: newSnapshot })
+      var stream = self._db.createDiffStream(self._prefix, snapshot, newSnapshot)
 
       var pending = {}
       stream.on('data', function (diff) {
