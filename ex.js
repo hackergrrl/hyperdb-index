@@ -9,7 +9,8 @@ var memdb = require('memdb')
 var db = hyperdb(ram, { valueEncoding: 'json' })
 var geo = GeoStore(memdb())
 
-var index = Index(db, process, {
+var index = Index(db, {
+  processFn: process,
   getSnapshot: getSnapshot,
   setSnapshot: setSnapshot
 })
@@ -42,7 +43,7 @@ function setSnapshot (snapshot, cb) {
 }
 function process (cur, prev, next) {
   if (cur.value.type === 'node') {
-    var v = parseInt(cur.name.split('/')[cur.name.split('/').length - 1])
+    var v = parseInt(cur.key.split('/')[cur.key.split('/').length - 1])
     console.log('process', cur.value)
     geo.insert([cur.value.lat, cur.value.lon], v, next)
   } else {
