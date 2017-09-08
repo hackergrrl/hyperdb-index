@@ -22,26 +22,27 @@ function Index (db, processFn, opts) {
   this._getSnapshot = opts.getSnapshot
   this._setSnapshot = opts.setSnapshot
 
-  var running = true
+  this._indexRunning = false
+
+  // Initial indexing kick-off
+  this._run()
 
   // TODO: some way to 'deactivate' the index; unwatch db
   db.watch(opts.prefix, function () {
-    if (running) return
+    if (self._indexRunning) {
+      return
+    }
     // TODO: logic to prevent a 'run' from being missed; should be queued
-    self._run(function (err) {
-      running = false
-    })
-  })
-
-  // Initial kick-off
-  this._run(function (err) {
-    running = false
+    self._run()
   })
 }
 inherits(Index, events.EventEmitter)
 
-Index.prototype._run = function (cb) {
+Index.prototype._run = function () {
   var self = this
+  this._indexRunning = true
+
+  var missing = 1
 
   this._db.snapshot(function (err, newSnapshot) {
     if (err) return self.emit('error', err)
@@ -55,19 +56,32 @@ Index.prototype._run = function (cb) {
       stream.on('data', function (diff) {
         if (diff.type === 'del') pending[diff.name] = diff
         else if (diff.type === 'put' && pending[diff.name]) {
+          missing++
           self._processFn(diff, pending[diff.name], function (err) {
             if (err) self.emit('error', err)
+            if (!--missing) finish()
           })
         } else {
+          missing++
           self._processFn(diff, null, function (err) {
             if (err) self.emit('error', err)
+            if (!--missing) finish()
           })
         }
       })
 
       stream.on('end', function () {
-        self._setSnapshot(newSnapshot, cb)
+        if (!--missing) finish()
       })
+
+      function finish () {
+        self._setSnapshot(newSnapshot, function (err) {
+          if (err) self.emit('error', err)
+
+          self._indexRunning = false
+          self.emit('ready')
+        })
+      }
     })
   })
 }
