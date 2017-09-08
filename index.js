@@ -57,27 +57,27 @@ Index.prototype._run = function () {
 
       var pending = {}
       stream.on('data', function (diff) {
-        if (diff.type === 'del') pending[diff.name] = diff
-        else if (diff.type === 'put' && pending[diff.name]) {
-          missing++
-          diff = { key: diff.name, value: diff.value }
-          self._processFn(diff, pending[diff.name], function (err) {
-            if (err) self.emit('error', err)
-            if (!--missing) finish()
-          })
+        if (diff.type === 'del') {
+          pending[diff.name] = diff
+          return
+        }
+        missing++
+
+        diff = { key: diff.name, value: diff.value }
+
+        if (diff.type === 'put' && pending[diff.name]) {
+          self._processFn(diff, pending[diff.name], onProcessDone)
         } else {
-          missing++
-          diff = { key: diff.name, value: diff.value }
-          self._processFn(diff, null, function (err) {
-            if (err) self.emit('error', err)
-            if (!--missing) finish()
-          })
+          self._processFn(diff, null, onProcessDone)
         }
       })
 
-      stream.on('end', function () {
+      stream.on('end', onProcessDone)
+
+      function onProcessDone (err) {
+        if (err) self.emit('error', err)
         if (!--missing) finish()
-      })
+      }
 
       function finish () {
         self._setSnapshot(newSnapshot, function (err) {
