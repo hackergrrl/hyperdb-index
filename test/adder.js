@@ -8,20 +8,17 @@ test('adder', function (t) {
 
   var db = hyperdb(ram, { valueEncoding: 'json' })
 
-  var idx = index(db, {
-    processFn: process,
-    getSnapshot: getSnapshot,
-    setSnapshot: setSnapshot
-  })
-
   var sum = 0
   var snapshot = null
-  function getSnapshot (cb) { cb(null, snapshot) }
-  function setSnapshot (s, cb) { snapshot = s; cb(null) }
-  function process (kv, _, next) {
-    if (typeof kv.value === 'number') sum += kv.value
-    next()
-  }
+
+  var idx = index(db, {
+    processFn: function (kv, _, next) {
+      if (typeof kv.value === 'number') sum += kv.value
+      next()
+    },
+    getSnapshot: function (cb) { cb(null, snapshot) },
+    setSnapshot: function (s, cb) { snapshot = s; cb(null) }
+  })
 
   var pending = 3
   db.put('/foo/bar', 17, done)
@@ -37,3 +34,4 @@ test('adder', function (t) {
     }
   }
 })
+
