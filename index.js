@@ -23,6 +23,7 @@ function Index (db, processFn, opts) {
   this._setSnapshot = opts.setSnapshot
 
   this._indexRunning = false
+  this._indexPending = false
 
   // Initial indexing kick-off
   this._run()
@@ -30,9 +31,9 @@ function Index (db, processFn, opts) {
   // TODO: some way to 'deactivate' the index; unwatch db
   db.watch(opts.prefix, function () {
     if (self._indexRunning) {
+      self._indexPending = true
       return
     }
-    // TODO: logic to prevent a 'run' from being missed; should be queued
     self._run()
   })
 }
@@ -79,7 +80,12 @@ Index.prototype._run = function () {
           if (err) self.emit('error', err)
 
           self._indexRunning = false
-          self.emit('ready')
+          if (self._indexPending) {
+            self._indexPending = false
+            process.nextTick(self._run.bind(self))
+          } else {
+            self.emit('ready')
+          }
         })
       }
     })
