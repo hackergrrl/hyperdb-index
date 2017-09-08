@@ -86,4 +86,9 @@ Index.prototype._run = function () {
   })
 }
 
+Index.prototype.ready = function (cb) {
+  if (!this._indexRunning) process.nextTick(cb)
+  else this.once('ready', cb)
+}
+
 function noop () {}
