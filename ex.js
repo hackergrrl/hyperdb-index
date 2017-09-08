@@ -4,38 +4,48 @@ var ram = require('random-access-memory')
 var GeoStore = require('grid-point-store')
 var memdb = require('memdb')
 
+//------------------------------------------------------------------------------
+
 var db = hyperdb(ram, { valueEncoding: 'json' })
 var geo = GeoStore(memdb())
 
-var now = null
+var index = Index(db, process, {
+  getSnapshot: getSnapshot,
+  setSnapshot: setSnapshot
+})
 
-var opts = {
-  getSnapshot: function (cb) {
-    cb(null, now)
-  },
-  setSnapshot: function (snapshot, cb) {
-    now = snapshot
-    cb(null)
-  }
+var pending = 0
+for (var i = 0; i < 5; i++) {
+  pending++
+  db.put('/nodes/' + i, { type: 'node', lat: i, lon: -i*2 }, function () {
+    if (!--pending) query()
+  })
 }
 
-var index = Index(db, process, opts)
+function query () {
+  index.ready(function () {
+    geo.query([[-10, -10], [10, 10]], function (err, nodes) {
+      console.log('query res', nodes)
+    })
+  })
+}
 
+//------------------------------------------------------------------------------
+
+var now = null
+function getSnapshot (cb) {
+  cb(null, now)
+}
+function setSnapshot (snapshot, cb) {
+  now = snapshot
+  cb(null)
+}
 function process (cur, prev, next) {
-  console.log('process', cur, prev)
   if (cur.value.type === 'node') {
-    var v = cur.name.split('/')[cur.name.split('/').length - 1]
+    var v = parseInt(cur.name.split('/')[cur.name.split('/').length - 1])
+    console.log('process', cur.value)
     geo.insert([cur.value.lat, cur.value.lon], v, next)
   } else {
     next(null)
   }
 }
-
-db.put('/nodes/123', { type: 'node', lat: 3, lon: -10 })
-
-setTimeout(function () {
-  geo.query([[-180, -85], [180, 85]], function (err, nodes) {
-    console.log(nodes)
-  })
-}, 1000)
-
