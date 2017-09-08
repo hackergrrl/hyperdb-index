@@ -13,7 +13,6 @@ test('adder', function (t) {
 
   var idx = index(db, {
     processFn: function (kv, _, next) {
-      console.log('pro', kv)
       if (typeof kv.value === 'number') sum += kv.value
       next()
 
@@ -35,7 +34,7 @@ test('adder', function (t) {
   }
 })
 
-test.skip('adder /w slow snapshots', function (t) {
+test('adder /w slow snapshots', function (t) {
   t.plan(4)
 
   var db = hyperdb(ram, { valueEncoding: 'json' })
@@ -67,3 +66,38 @@ test.skip('adder /w slow snapshots', function (t) {
   }
 })
 
+test('adder /w many concurrent PUTs', function (t) {
+  t.plan(201)
+
+  var db = hyperdb(ram, { valueEncoding: 'json' })
+
+  var sum = 0
+  var snapshot = null
+
+  var idx = index(db, {
+    processFn: function (kv, _, next) {
+      console.log('pro', kv)
+      if (typeof kv.value === 'number') sum += kv.value
+      next()
+
+      console.log('p', pending)
+      if(!--pending) done()
+    },
+    getSnapshot: function (cb) { cb(null, snapshot) },
+    setSnapshot: function (s, cb) { snapshot = s; cb(null) }
+  })
+
+  var pending = 200
+  var expectedSum = 0
+  for (var i = 0; i < pending; i++) {
+    var n = Math.floor(Math.random() * 10)
+    expectedSum += n
+    db.put('/number/' + i, n, function (err) { t.error(err) })
+  }
+
+  function done () {
+    idx.ready(function () {
+      t.equal(sum, expectedSum)
+    })
+  }
+})

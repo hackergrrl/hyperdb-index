@@ -83,11 +83,12 @@ Index.prototype._run = function () {
         self._setSnapshot(newSnapshot, function (err) {
           if (err) self.emit('error', err)
 
-          self._indexRunning = false
           if (self._indexPending) {
+            self._indexRunning = true
             self._indexPending = false
             process.nextTick(self._run.bind(self))
           } else {
+            self._indexRunning = false
             self.emit('ready')
           }
         })
