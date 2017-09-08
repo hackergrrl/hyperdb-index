@@ -3,22 +3,24 @@ var inherits = require('inherits')
 
 module.exports = Index
 
-function Index (db, processFn, opts) {
-  if (!(this instanceof Index)) return new Index(db, processFn, opts)
-  events.EventEmitter.call(this)
+function Index (db, opts) {
+  if (!(this instanceof Index)) return new Index(db, opts)
+  opts = opts || {}
 
   if (!db) throw new Error('no argument "db" provided')
-  if (!processFn) throw new Error('no argument "processFn" provided')
-  if (typeof processFn !== 'function') throw new Error('no argument "processFn" provided')
+  if (!opts.processFn) throw new Error('no argument "processFn" provided')
+  if (typeof opts.processFn !== 'function') throw new Error('no argument "processFn" provided')
   if (!opts.getSnapshot) throw new Error('no argument "opts.getSnapshot" provided')
   if (!opts.setSnapshot) throw new Error('no argument "opts.setSnapshot" provided')
+
+  events.EventEmitter.call(this)
 
   opts.prefix = opts.prefix || '/'
 
   var self = this
   this._db = db
   this._prefix = opts.prefix
-  this._processFn = processFn
+  this._processFn = opts.processFn
   this._getSnapshot = opts.getSnapshot
   this._setSnapshot = opts.setSnapshot
 
@@ -58,12 +60,14 @@ Index.prototype._run = function () {
         if (diff.type === 'del') pending[diff.name] = diff
         else if (diff.type === 'put' && pending[diff.name]) {
           missing++
+          diff = { key: diff.name, value: diff.value }
           self._processFn(diff, pending[diff.name], function (err) {
             if (err) self.emit('error', err)
             if (!--missing) finish()
           })
         } else {
           missing++
+          diff = { key: diff.name, value: diff.value }
           self._processFn(diff, null, function (err) {
             if (err) self.emit('error', err)
             if (!--missing) finish()
