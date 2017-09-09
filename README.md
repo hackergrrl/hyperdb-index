@@ -2,6 +2,10 @@
 
 > Build an index over a [hyperdb][hyperdb].
 
+## WIP
+
+Not ready for real use; still mad science-y.
+
 ## Usage
 
 Let's build an index that tracks all `node`s in a [spatial point
