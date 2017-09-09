@@ -99,3 +99,37 @@ test('adder /w many concurrent PUTs', function (t) {
     })
   }
 })
+
+test('adder /w index made AFTER db population', function (t) {
+  t.plan(201)
+
+  var db = hyperdb(ram, { valueEncoding: 'json' })
+
+  var sum = 0
+  var snapshot = null
+
+  var pending = 200
+  var expectedSum = 0
+  for (var i = 0; i < pending; i++) {
+    var n = Math.floor(Math.random() * 10)
+    expectedSum += n
+    db.put('/number/' + i, n, function (err) {
+      t.error(err)
+      if (!--pending) done()
+    })
+  }
+
+  function done () {
+    var idx = index(db, {
+      processFn: function (kv, _, next) {
+        if (typeof kv.value === 'number') sum += kv.value
+        next()
+      },
+      getSnapshot: function (cb) { cb(null, snapshot) },
+      setSnapshot: function (s, cb) { snapshot = s; cb(null) }
+    })
+    idx.ready(function () {
+      t.equal(sum, expectedSum)
+    })
+  }
+})
