@@ -76,11 +76,9 @@ test('adder /w many concurrent PUTs', function (t) {
 
   var idx = index(db, {
     processFn: function (kv, _, next) {
-      console.log('pro', kv)
       if (typeof kv.value === 'number') sum += kv.value
       next()
 
-      console.log('p', pending)
       if(!--pending) done()
     },
     getSnapshot: function (cb) { cb(null, snapshot) },
