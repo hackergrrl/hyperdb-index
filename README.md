@@ -24,7 +24,7 @@ var db = hyperdb(ram, { valueEncoding: 'json' })
 var geo = GeoStore(memdb())
 
 var idx = index(db, {
-  process: process,
+  processFn: processFn,
   getSnapshot: getSnapshot,
   setSnapshot: setSnapshot
 })
@@ -55,7 +55,7 @@ function setSnapshot (snapshot, cb) {
   now = snapshot
   cb(null)
 }
-function process (cur, prev, next) {
+function processFn (cur, prev, next) {
   if (cur.value.type === 'node') {
     var v = parseInt(cur.name.split('/')[cur.name.split('/').length - 1])
     console.log('process', cur.value)
@@ -98,13 +98,15 @@ below).
 
 Valid `opts` include:
 
-- `opts.process` (required): a function to be called to process a new entry
-  in `db`. The expected function signature is `function (kv, next)`, where `kv`
-  is of the form `{ key: '...', value: {} }`, and `next` is a callback to call
-  when processing of that key-value pair is complete.
+- `opts.processFn` (required): a function to be called to process a new entry in
+  `db`. The expected function signature is `function (kv, oldKv, next)`, where
+  `kv` is of the form `{ key: '...', value: {} }`, `oldKv` is its previous value
+  (`null` if none), and `next` is a callback to call when processing of that
+  key-value pair is complete.
 - `opts.getSnapshot` (required): a function that will be called to retrieve the
   current snapshot of the [hyperdb][hyperdb]. It has the signature `function
-  (cb)` and expects a [hyperdb snapshot object](https://github.com/mafintosh/hyperdb/#dbsnapshotcb).
+  (cb)` and expects a [hyperdb snapshot
+  object](https://github.com/mafintosh/hyperdb/#dbsnapshotcb).
 - `opts.setSnapshot` (required): a function that will be called to store the
   current snapshot of the hyperdb. It has the signature `function (snapshot,
   cb)`. Call `cb` once you've stored the snapshot object.
