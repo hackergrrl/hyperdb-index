@@ -10,7 +10,7 @@ var db = hyperdb(ram, { valueEncoding: 'json' })
 var geo = GeoStore(memdb())
 
 var index = Index(db, {
-  processFn: process,
+  processFn: processFn,
   getSnapshot: getSnapshot,
   setSnapshot: setSnapshot
 })
@@ -41,7 +41,7 @@ function setSnapshot (snapshot, cb) {
   now = snapshot
   cb(null)
 }
-function process (cur, prev, next) {
+function processFn (cur, prev, next) {
   if (cur.value.type === 'node') {
     var v = parseInt(cur.key.split('/')[cur.key.split('/').length - 1])
     console.log('process', cur.value)
