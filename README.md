@@ -9,7 +9,8 @@ Not ready for real use; still mad science-y.
 ## Usage
 
 Let's build an index that tracks all `node`s in a [spatial point
-store](https://github.com/noffle/grid-point-store):
+store](https://github.com/noffle/grid-point-store), for fast bounding box
+queries:
 
 ```js
 var index = require('hyperdb-index')
@@ -80,6 +81,9 @@ query [ { lat: 4, lon: -8, value: 4 },
   { lat: 1, lon: -2, value: 1 },
   { lat: 0, lon: 0, value: 0 } ]
 ```
+
+So here `hyperdb-index` is acting like a bridge between the raw point data in
+`hyperdb` and the much more efficient point storage module `grid-point-store`.
 
 ## API
 
