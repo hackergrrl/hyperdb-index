@@ -13,7 +13,7 @@ test('adder', function (t) {
 
   var idx = index(db, {
     processFn: function (kv, _, next) {
-      if (typeof kv.value === 'number') sum += kv.value
+      if (typeof kv.value[0] === 'number') sum += kv.value[0]
       next()
 
       if(!--pending) done()
@@ -44,7 +44,7 @@ test('adder /w slow snapshots', function (t) {
 
   var idx = index(db, {
     processFn: function (kv, _, next) {
-      if (typeof kv.value === 'number') sum += kv.value
+      if (typeof kv.value[0] === 'number') sum += kv.value[0]
       next()
     },
     getSnapshot: function (cb) { setTimeout(function () { cb(null, snapshot) }, 100) },
@@ -76,7 +76,7 @@ test('adder /w many concurrent PUTs', function (t) {
 
   var idx = index(db, {
     processFn: function (kv, _, next) {
-      if (typeof kv.value === 'number') sum += kv.value
+      if (typeof kv.value[0] === 'number') sum += kv.value[0]
       next()
 
       if(!--pending) done()
@@ -122,7 +122,7 @@ test('adder /w index made AFTER db population', function (t) {
   function done () {
     var idx = index(db, {
       processFn: function (kv, _, next) {
-        if (typeof kv.value === 'number') sum += kv.value
+        if (typeof kv.value[0] === 'number') sum += kv.value[0]
         next()
       },
       getSnapshot: function (cb) { cb(null, snapshot) },
