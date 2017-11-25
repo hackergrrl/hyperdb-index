@@ -1,10 +1,6 @@
 # hyperdb-index
 
-> Build an index over a [hyperdb][hyperdb].
-
-## WIP
-
-Not ready for real use; still mad science-y.
+> Build an incremental index over a [hyperdb][hyperdb].
 
 ## Usage
 
