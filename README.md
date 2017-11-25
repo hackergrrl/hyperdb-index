@@ -2,6 +2,9 @@
 
 > Build an incremental index over a [hyperdb][hyperdb].
 
+*If you're planning on using LevelDB for storage, consider the wrapper module
+[hyperdb-index-level](https://github.com/noffle/hyperdb-index-level).*
+
 ## Usage
 
 Let's build an index that tracks all `node`s in a [spatial point
