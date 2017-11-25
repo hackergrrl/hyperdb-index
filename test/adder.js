@@ -179,3 +179,52 @@ test('adder /w async storage', function (t) {
     })
   }
 })
+
+test('adder /w async storage: ready', function (t) {
+  t.plan(4)
+
+  var db = hyperdb(ram, { valueEncoding: 'json' })
+
+  var sum = 0
+  var snapshot = null
+
+  function getSum (cb) {
+    setTimeout(function () { cb(sum) }, Math.floor(Math.random() * 1000))
+  }
+  function setSum (newSum, cb) {
+    setTimeout(function () {
+      sum = newSum
+      cb()
+    }, Math.floor(Math.random() * 1000))
+  }
+
+  var idx = index(db, {
+    processFn: function (kv, _, next) {
+      if (typeof kv.value[0] === 'number') {
+        getSum(function (theSum) {
+          theSum += kv.value[0]
+          setSum(theSum, function () {
+            next()
+          })
+        })
+      }
+    },
+    getSnapshot: function (cb) { cb(null, snapshot) },
+    setSnapshot: function (s, cb) { snapshot = s; cb(null) }
+  })
+
+  db.put('/foo/bar', 17, function (err) {
+    t.error(err)
+    db.put('/foo/baz', 12, function (err) {
+      t.error(err)
+      db.put('/bax/12', 1, function (err) {
+        t.error(err)
+        idx.ready(function () {
+          getSum(function (theSum) {
+            t.equals(theSum, 30)
+          })
+        })
+      })
+    })
+  })
+})
