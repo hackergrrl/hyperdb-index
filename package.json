@@ -2,7 +2,7 @@
   "name": "hyperdb-index",
   "description": "Build a realtime index over a hyperdb key prefix.",
   "author": "Stephen Whitmore <sww@eight.net>",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "repository": {
     "url": "git://github.com/noffle/hyperdb-index.git"
   },
@@ -20,7 +20,7 @@
     "through2": "^2.0.3"
   },
   "devDependencies": {
-    "hyperdb": "^1.2.0-rc1",
+    "hyperdb": "github:mafintosh/hyperdb",
     "random-access-memory": "^2.4.0",
     "standard": "~10.0.0",
     "standard-version": "^4.2.0",
