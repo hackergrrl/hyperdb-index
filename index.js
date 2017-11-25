@@ -1,6 +1,7 @@
 var events = require('events')
 var inherits = require('inherits')
 var through = require('through2')
+var pump = require('pump')
 
 module.exports = Index
 
@@ -57,7 +58,7 @@ Index.prototype._run = function () {
       var source = self._db.createDiffStream(self._prefix, snapshot, newSnapshot)
       var stream = through.obj(write)
 
-      source.pipe(stream)
+      pump(source, stream, onProcessDone)
 
       var pending = {}
       function write (diff, enc, next) {
@@ -67,22 +68,20 @@ Index.prototype._run = function () {
         }
         missing++
 
-        diff = { key: diff.name, value: diff.value }
+        var kv = { key: diff.name, value: diff.value }
 
         if (diff.type === 'put' && pending[diff.name]) {
-          self._processFn(diff, pending[diff.name], function (err) {
+          self._processFn(kv, pending[diff.name], function (err) {
             onProcessDone(err)
             next(err)
           })
         } else {
-          self._processFn(diff, null, function (err) {
+          self._processFn(kv, null, function (err) {
             onProcessDone(err)
             next(err)
           })
         }
       }
-
-      source.on('end', onProcessDone)
 
       function onProcessDone (err) {
         if (err) self.emit('error', err)
