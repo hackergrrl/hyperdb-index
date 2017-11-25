@@ -154,14 +154,10 @@ test('adder /w async storage', function (t) {
 
   var idx = index(db, {
     processFn: function (kv, _, next) {
-      console.log('hi', kv)
       if (typeof kv.value[0] === 'number') {
-        console.log('getting..')
         getSum(function (theSum) {
-          console.log('got. setting..')
           theSum += kv.value[0]
           setSum(theSum, function () {
-            console.log('set')
             next()
             if(!--pending) done()
           })
