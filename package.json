@@ -16,7 +16,8 @@
   },
   "keywords": [],
   "dependencies": {
-    "inherits": "^2.0.3"
+    "inherits": "^2.0.3",
+    "through2": "^2.0.3"
   },
   "devDependencies": {
     "hyperdb": "^1.2.0-rc1",

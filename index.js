@@ -1,5 +1,6 @@
 var events = require('events')
 var inherits = require('inherits')
+var through = require('through2')
 
 module.exports = Index
 
@@ -53,10 +54,13 @@ Index.prototype._run = function () {
     self._getSnapshot(function (err, snapshot) {
       if (err) return self.emit('error', err)
 
-      var stream = self._db.createDiffStream(self._prefix, snapshot, newSnapshot)
+      var source = self._db.createDiffStream(self._prefix, snapshot, newSnapshot)
+      var stream = through.obj(write)
+
+      source.pipe(stream)
 
       var pending = {}
-      stream.on('data', function (diff) {
+      function write (diff, enc, next) {
         if (diff.type === 'del') {
           pending[diff.name] = diff
           return
@@ -66,13 +70,19 @@ Index.prototype._run = function () {
         diff = { key: diff.name, value: diff.value }
 
         if (diff.type === 'put' && pending[diff.name]) {
-          self._processFn(diff, pending[diff.name], onProcessDone)
+          self._processFn(diff, pending[diff.name], function (err) {
+            onProcessDone(err)
+            next(err)
+          })
         } else {
-          self._processFn(diff, null, onProcessDone)
+          self._processFn(diff, null, function (err) {
+            onProcessDone(err)
+            next(err)
+          })
         }
-      })
+      }
 
-      stream.on('end', onProcessDone)
+      source.on('end', onProcessDone)
 
       function onProcessDone (err) {
         if (err) self.emit('error', err)
