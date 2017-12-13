@@ -5,6 +5,8 @@
 *If you're planning on using LevelDB for storage, consider the wrapper module
 [hyperdb-index-level](https://github.com/noffle/hyperdb-index-level).*
 
+Depends on `hyperdb@2.0.0` or later for the `createHistoryStream` API.
+
 ## Usage
 
 Let's build an index that tracks all `node`s in a [spatial point
@@ -25,8 +27,8 @@ var geo = GeoStore(memdb())
 
 var idx = index(db, {
   processFn: processFn,
-  getSnapshot: getSnapshot,
-  setSnapshot: setSnapshot
+  getVersion: getVersion,
+  setVersion: setVersion
 })
 
 var pending = 0
@@ -48,11 +50,11 @@ function query () {
 //------------------------------------------------------------------------------
 
 var now = null
-function getSnapshot (cb) {
+function getVersion (cb) {
   cb(null, now)
 }
-function setSnapshot (snapshot, cb) {
-  now = snapshot
+function setVersion (version, cb) {
+  now = version
   cb(null)
 }
 function processFn (cur, prev, next) {
@@ -94,9 +96,9 @@ var index = require('hyperdb-index')
 
 Create a new index. `db` is a [hyperdb][hyperdb] instance.
 
-It is the module consumer's responsibility to store the indexer's snapshot of
+It is the module consumer's responsibility to store the indexer's version of
 what entry it's indexed `db` up to. The module consumer controls this by
-implementing the functions `opts.getSnapshot` and `opts.setSnapshot` (see
+implementing the functions `opts.getVersion` and `opts.setVersion` (see
 below).
 
 Valid `opts` include:
@@ -106,13 +108,13 @@ Valid `opts` include:
   `kv` is of the form `{ key: '...', value: {} }`, `oldKv` is its previous value
   (`null` if none), and `next` is a callback to call when processing of that
   key-value pair is complete.
-- `opts.getSnapshot` (required): a function that will be called to retrieve the
-  current snapshot of the [hyperdb][hyperdb]. It has the signature `function
-  (cb)` and expects a [hyperdb snapshot
-  object](https://github.com/mafintosh/hyperdb/#dbsnapshotcb).
-- `opts.setSnapshot` (required): a function that will be called to store the
-  current snapshot of the hyperdb. It has the signature `function (snapshot,
-  cb)`. Call `cb` once you've stored the snapshot object.
+- `opts.getVersion` (required): a function that will be called to retrieve the
+  current version of the [hyperdb][hyperdb]. It has the signature `function
+  (cb)` and expects a [hyperdb version
+  buffer](https://github.com/mafintosh/hyperdb/#dbversioncb).
+- `opts.setVersion` (required): a function that will be called to store the
+  current version of the hyperdb. It has the signature `function (version,
+  cb)`. Call `cb` once you've stored the version object.
 - `opts.prefix` (optional): a key prefix to index. If not given, the root key
   `'/'` is assumed.
 
