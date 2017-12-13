@@ -27,6 +27,8 @@ function Index (db, opts) {
   this._getVersion = opts.getVersion
   this._setVersion = opts.setVersion
 
+  this._indexRunning = true
+
   // Kick off the indexing
   this._run()
 
@@ -47,6 +49,13 @@ Index.prototype._run = function () {
     self._getVersion(function (err, startVersion) {
       if (err) return self.emit('error', err)
 
+      // If the hyperdb version matches what's in storage, the index is up to
+      // date
+      if (startVersion && frontVersion.equals(startVersion)) {
+        self._indexRunning = false
+        self.emit('ready')
+      }
+
       var heads = startVersion ? versions.deserialize(startVersion) : null
 
       var source = self._db.createHistoryStream({start: startVersion, live: true})
@@ -54,32 +63,29 @@ Index.prototype._run = function () {
       pump(source, sink, onDone)
 
       function write (node, _, next) {
+        console.log('write', node.key, node.value)
+        self._indexRunning = true
+
         self._processFn(node, function (err) {
-          // console.log('old heads', heads)
+          // Incrementally update the current 'version' using this node
           heads = updateHeadsWithNode(heads || [], node)
-          // console.log('new heads', heads)
-          var newVersion = versions.serialize(heads)
-          self._setVersion(newVersion, next)
+          var latestVersion = versions.serialize(heads)
+          self._setVersion(latestVersion, next)
+
+          // Compare this version to what hyperdb's true heads are; emit
+          // 'ready' if they match
+          self._db.version(function (err, headVersion) {
+            if (err) return self.emit('error', err)
+            if (latestVersion.equals(headVersion)) {
+              self._indexRunning = false
+              self.emit('ready')
+            }
+          })
         })
       }
 
       function onDone (err) {
         self.emit('error', err)
-      }
-
-      function finish () {
-        self._setVersion(newVersion, function (err) {
-          if (err) self.emit('error', err)
-
-          if (self._indexPending) {
-            self._indexRunning = true
-            self._indexPending = false
-            process.nextTick(self._run.bind(self))
-          } else {
-            self._indexRunning = false
-            self.emit('ready')
-          }
-        })
       }
     })
   })

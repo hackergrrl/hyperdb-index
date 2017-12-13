@@ -104,7 +104,7 @@ test('adder /w many concurrent PUTs', function (t) {
   }
 })
 
-test.skip('adder /w index made AFTER db population', function (t) {
+test('adder /w index made AFTER db population', function (t) {
   t.plan(201)
 
   var db = hyperdb(ram, { valueEncoding: 'json' })
@@ -138,7 +138,7 @@ test.skip('adder /w index made AFTER db population', function (t) {
   }
 })
 
-test.skip('adder /w async storage', function (t) {
+test('adder /w async storage', function (t) {
   t.plan(4)
 
   var db = hyperdb(ram, { valueEncoding: 'json' })
@@ -184,7 +184,7 @@ test.skip('adder /w async storage', function (t) {
   }
 })
 
-test.skip('adder /w async storage: ready', function (t) {
+test('adder /w async storage: ready', function (t) {
   t.plan(4)
 
   var db = hyperdb(ram, { valueEncoding: 'json' })
