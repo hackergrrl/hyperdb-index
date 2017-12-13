@@ -4,7 +4,7 @@ var ram = require('random-access-memory')
 var GeoStore = require('grid-point-store')
 var memdb = require('memdb')
 
-//------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------
 
 var db = hyperdb(ram, { valueEncoding: 'json' })
 var geo = GeoStore(memdb())
@@ -18,7 +18,7 @@ var index = Index(db, {
 var pending = 0
 for (var i = 0; i < 5; i++) {
   pending++
-  db.put('/nodes/' + i, { type: 'node', lat: i, lon: -i*2 }, function () {
+  db.put('/nodes/' + i, { type: 'node', lat: i, lon: -i * 2 }, function () {
     if (!--pending) query()
   })
 }
@@ -26,12 +26,13 @@ for (var i = 0; i < 5; i++) {
 function query () {
   index.ready(function () {
     geo.query([[-10, -10], [10, 10]], function (err, nodes) {
+      if (err) throw err
       console.log('query res', nodes)
     })
   })
 }
 
-//------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------
 
 var now = null
 function getSnapshot (cb) {

@@ -2,24 +2,25 @@ var test = require('tape')
 var hyperdb = require('hyperdb')
 var ram = require('random-access-memory')
 var index = require('..')
+var versions = require('../lib/version')
 
 test('adder', function (t) {
-  t.plan(4)
+  t.plan(6)
 
   var db = hyperdb(ram, { valueEncoding: 'json' })
 
   var sum = 0
-  var snapshot = null
+  var version = null
 
   var idx = index(db, {
-    processFn: function (kv, _, next) {
-      if (typeof kv.value[0] === 'number') sum += kv.value[0]
+    processFn: function (node, next) {
+      if (typeof node.value === 'number') sum += node.value
       next()
 
-      if(!--pending) done()
+      if (!--pending) done()
     },
-    getSnapshot: function (cb) { cb(null, snapshot) },
-    setSnapshot: function (s, cb) { snapshot = s; cb(null) }
+    getVersion: function (cb) { cb(null, version) },
+    setVersion: function (s, cb) { version = s; cb(null) }
   })
 
   var pending = 3
@@ -29,26 +30,31 @@ test('adder', function (t) {
 
   function done () {
     idx.ready(function () {
+      var finalVersion = versions.deserialize(version)
+      t.equal(finalVersion.length, 1)
+      t.equal(finalVersion[0].seq, 2)
       t.equal(sum, 30)
     })
   }
 })
 
-test('adder /w slow snapshots', function (t) {
-  t.plan(4)
+test('adder /w slow versions', function (t) {
+  t.plan(6)
 
   var db = hyperdb(ram, { valueEncoding: 'json' })
 
   var sum = 0
-  var snapshot = null
+  var version = null
 
   var idx = index(db, {
-    processFn: function (kv, _, next) {
-      if (typeof kv.value[0] === 'number') sum += kv.value[0]
+    processFn: function (node, next) {
+      if (typeof node.value === 'number') sum += node.value
       next()
     },
-    getSnapshot: function (cb) { setTimeout(function () { cb(null, snapshot) }, 100) },
-    setSnapshot: function (s, cb) { snapshot = s; setTimeout(cb, 100) }
+    getVersion: function (cb) {
+      setTimeout(function () { cb(null, version) }, 100)
+    },
+    setVersion: function (s, cb) { version = s; setTimeout(cb, 100) }
   })
 
   var pending = 3
@@ -60,6 +66,9 @@ test('adder /w slow snapshots', function (t) {
     t.error(err)
     if (!--pending) {
       idx.ready(function () {
+        var finalVersion = versions.deserialize(version)
+        t.equal(finalVersion.length, 1)
+        t.equal(finalVersion[0].seq, 2)
         t.equal(sum, 30)
       })
     }
@@ -67,22 +76,22 @@ test('adder /w slow snapshots', function (t) {
 })
 
 test('adder /w many concurrent PUTs', function (t) {
-  t.plan(201)
+  t.plan(203)
 
   var db = hyperdb(ram, { valueEncoding: 'json' })
 
   var sum = 0
-  var snapshot = null
+  var version = null
 
   var idx = index(db, {
-    processFn: function (kv, _, next) {
-      if (typeof kv.value[0] === 'number') sum += kv.value[0]
+    processFn: function (node, next) {
+      if (typeof node.value === 'number') sum += node.value
       next()
 
-      if(!--pending) done()
+      if (!--pending) done()
     },
-    getSnapshot: function (cb) { cb(null, snapshot) },
-    setSnapshot: function (s, cb) { snapshot = s; cb(null) }
+    getVersion: function (cb) { cb(null, version) },
+    setVersion: function (s, cb) { version = s; cb(null) }
   })
 
   var pending = 200
@@ -95,18 +104,21 @@ test('adder /w many concurrent PUTs', function (t) {
 
   function done () {
     idx.ready(function () {
+      var finalVersion = versions.deserialize(version)
+      t.equal(finalVersion.length, 1)
+      t.equal(finalVersion[0].seq, 199)
       t.equal(sum, expectedSum)
     })
   }
 })
 
 test('adder /w index made AFTER db population', function (t) {
-  t.plan(201)
+  t.plan(203)
 
   var db = hyperdb(ram, { valueEncoding: 'json' })
 
   var sum = 0
-  var snapshot = null
+  var version = null
 
   var pending = 200
   var expectedSum = 0
@@ -121,51 +133,54 @@ test('adder /w index made AFTER db population', function (t) {
 
   function done () {
     var idx = index(db, {
-      processFn: function (kv, _, next) {
-        if (typeof kv.value[0] === 'number') sum += kv.value[0]
+      processFn: function (node, next) {
+        if (typeof node.value === 'number') sum += node.value
         next()
       },
-      getSnapshot: function (cb) { cb(null, snapshot) },
-      setSnapshot: function (s, cb) { snapshot = s; cb(null) }
+      getVersion: function (cb) { cb(null, version) },
+      setVersion: function (s, cb) { version = s; cb(null) }
     })
     idx.ready(function () {
+      var finalVersion = versions.deserialize(version)
+      t.equal(finalVersion.length, 1)
+      t.equal(finalVersion[0].seq, 199)
       t.equal(sum, expectedSum)
     })
   }
 })
 
 test('adder /w async storage', function (t) {
-  t.plan(4)
+  t.plan(6)
 
   var db = hyperdb(ram, { valueEncoding: 'json' })
 
   var sum = 0
-  var snapshot = null
+  var version = null
 
   function getSum (cb) {
-    setTimeout(function () { cb(sum) }, Math.floor(Math.random() * 1000))
+    setTimeout(function () { cb(sum) }, Math.floor(Math.random() * 200))
   }
   function setSum (newSum, cb) {
     setTimeout(function () {
       sum = newSum
       cb()
-    }, Math.floor(Math.random() * 1000))
+    }, Math.floor(Math.random() * 200))
   }
 
   var idx = index(db, {
-    processFn: function (kv, _, next) {
-      if (typeof kv.value[0] === 'number') {
+    processFn: function (node, next) {
+      if (typeof node.value === 'number') {
         getSum(function (theSum) {
-          theSum += kv.value[0]
+          theSum += node.value
           setSum(theSum, function () {
             next()
-            if(!--pending) done()
+            if (!--pending) done()
           })
         })
       }
     },
-    getSnapshot: function (cb) { cb(null, snapshot) },
-    setSnapshot: function (s, cb) { snapshot = s; cb(null) }
+    getVersion: function (cb) { cb(null, version) },
+    setVersion: function (s, cb) { version = s; cb(null) }
   })
 
   var pending = 3
@@ -175,42 +190,45 @@ test('adder /w async storage', function (t) {
 
   function done () {
     idx.ready(function () {
+      var finalVersion = versions.deserialize(version)
+      t.equal(finalVersion.length, 1)
+      t.equal(finalVersion[0].seq, 2)
       t.equal(sum, 30)
     })
   }
 })
 
 test('adder /w async storage: ready', function (t) {
-  t.plan(4)
+  t.plan(6)
 
   var db = hyperdb(ram, { valueEncoding: 'json' })
 
   var sum = 0
-  var snapshot = null
+  var version = null
 
   function getSum (cb) {
-    setTimeout(function () { cb(sum) }, Math.floor(Math.random() * 1000))
+    setTimeout(function () { cb(sum) }, Math.floor(Math.random() * 100))
   }
   function setSum (newSum, cb) {
     setTimeout(function () {
       sum = newSum
       cb()
-    }, Math.floor(Math.random() * 1000))
+    }, Math.floor(Math.random() * 100))
   }
 
   var idx = index(db, {
-    processFn: function (kv, _, next) {
-      if (typeof kv.value[0] === 'number') {
+    processFn: function (node, next) {
+      if (typeof node.value === 'number') {
         getSum(function (theSum) {
-          theSum += kv.value[0]
+          theSum += node.value
           setSum(theSum, function () {
             next()
           })
         })
       }
     },
-    getSnapshot: function (cb) { cb(null, snapshot) },
-    setSnapshot: function (s, cb) { snapshot = s; cb(null) }
+    getVersion: function (cb) { cb(null, version) },
+    setVersion: function (s, cb) { version = s; cb(null) }
   })
 
   db.put('/foo/bar', 17, function (err) {
@@ -221,6 +239,9 @@ test('adder /w async storage: ready', function (t) {
         t.error(err)
         idx.ready(function () {
           getSum(function (theSum) {
+            var finalVersion = versions.deserialize(version)
+            t.equal(finalVersion.length, 1)
+            t.equal(finalVersion[0].seq, 2)
             t.equals(theSum, 30)
           })
         })

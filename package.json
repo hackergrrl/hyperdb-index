@@ -11,17 +11,19 @@
   "main": "index.js",
   "scripts": {
     "release": "standard-version",
-    "test": "tape test/*.js",
+    "test": "npm run lint && tape test/*.js",
     "lint": "standard"
   },
   "keywords": [],
   "dependencies": {
     "inherits": "^2.0.3",
     "pump": "^1.0.3",
-    "through2": "^2.0.3"
+    "through2": "^2.0.3",
+    "to-buffer": "^1.1.0",
+    "varint": "^5.0.0"
   },
   "devDependencies": {
-    "hyperdb": "github:mafintosh/hyperdb",
+    "hyperdb": "^2.0.0",
     "random-access-memory": "^2.4.0",
     "standard": "~10.0.0",
     "standard-version": "^4.2.0",
