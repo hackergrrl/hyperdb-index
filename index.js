@@ -20,7 +20,6 @@ function Index (db, opts) {
 
   opts.prefix = opts.prefix || '/'
 
-  var self = this
   this._db = db
   this._prefix = opts.prefix
   this._processFn = opts.processFn
@@ -44,8 +43,7 @@ Index.prototype._run = function () {
 
   // get the current head version
   this._db.version(function (err, frontVersion) {
-    var frontHeads = versions.deserialize(frontVersion)
-
+    if (err) return self.emit('error', err)
     self._getVersion(function (err, startVersion) {
       if (err) return self.emit('error', err)
 
@@ -66,6 +64,8 @@ Index.prototype._run = function () {
         self._indexRunning = true
 
         self._processFn(node, function (err) {
+          if (err) return next(err)
+
           // Incrementally update the current 'version' using this node
           heads = updateHeadsWithNode(heads || [], node)
           var latestVersion = versions.serialize(heads)
@@ -95,8 +95,6 @@ Index.prototype.ready = function (cb) {
   else this.once('ready', cb)
 }
 
-function noop () {}
-
 // [{key, seq}], Node -> [{key, seq}] <Mutate>
 function updateHeadsWithNode (heads, node) {
   var newHeads = []
@@ -113,16 +111,16 @@ function updateHeadsWithNode (heads, node) {
         if (feed.key.equals(head.key)) {
           match = true
           if (node.feed === i) {
-            newHeads.push({key: feed.key, seq: node.seq })
+            newHeads.push({ key: feed.key, seq: node.seq })
           } else {
-            newHeads.push({key: feed.key, seq: heads[j].seq })
+            newHeads.push({ key: feed.key, seq: heads[j].seq })
           }
           break
         }
       }
       if (!match) {
         if (node.feed === i) {
-          newHeads.push({key: feed.key, seq: node.seq })
+          newHeads.push({ key: feed.key, seq: node.seq })
         } else {
           throw new Error('this should never happen')
         }
@@ -132,4 +130,3 @@ function updateHeadsWithNode (heads, node) {
 
   return newHeads
 }
-
