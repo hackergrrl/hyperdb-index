@@ -11,7 +11,7 @@
   "main": "index.js",
   "scripts": {
     "release": "standard-version",
-    "test": "tape test/*.js",
+    "test": "npm run lint && tape test/*.js",
     "lint": "standard"
   },
   "keywords": [],
