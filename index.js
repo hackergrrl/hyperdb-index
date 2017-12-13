@@ -2,8 +2,7 @@ var events = require('events')
 var inherits = require('inherits')
 var through = require('through2')
 var pump = require('pump')
-var toBuffer = require('to-buffer')
-var varint = require('varint')
+var versions = require('./lib/version')
 
 module.exports = Index
 
@@ -43,12 +42,12 @@ Index.prototype._run = function () {
 
   // get the current head version
   this._db.version(function (err, frontVersion) {
-    var frontHeads = versionToHeads(frontVersion)
+    var frontHeads = versions.deserialize(frontVersion)
 
     self._getVersion(function (err, startVersion) {
       if (err) return self.emit('error', err)
 
-      var heads = startVersion ? versionToHeads(startVersion) : null
+      var heads = startVersion ? versions.deserialize(startVersion) : null
 
       var source = self._db.createHistoryStream({start: startVersion, live: true})
       var sink = through.obj(write)
@@ -56,10 +55,10 @@ Index.prototype._run = function () {
 
       function write (node, _, next) {
         self._processFn(node, function (err) {
-          console.log('old heads', heads)
+          // console.log('old heads', heads)
           heads = updateHeadsWithNode(heads || [], node)
-          console.log('new heads', heads)
-          var newVersion = headsToVersion(heads)
+          // console.log('new heads', heads)
+          var newVersion = versions.serialize(heads)
           self._setVersion(newVersion, next)
         })
       }
@@ -92,34 +91,6 @@ Index.prototype.ready = function (cb) {
 }
 
 function noop () {}
-
-// Buffer -> [{key, seq}]
-function versionToHeads (version) {
-  var ptr = 0
-  var heads = []
-
-  while (ptr < version.length) {
-    var key = version.slice(ptr, ptr + 32)
-    ptr += 32
-    var seq = varint.decode(version, ptr)
-    ptr += varint.decode.bytes
-    heads.push({key: key, seq: seq})
-  }
-
-  return heads
-}
-
-// [{keq, seq}] -> Buffer
-function headsToVersion (heads) {
-  var bufAccum = []
-
-  for (var i = 0; i < heads.length; i++) {
-    bufAccum.push(heads[i].key)
-    bufAccum.push(toBuffer(varint.encode(heads[i].seq)))
-  }
-
-  return Buffer.concat(bufAccum)
-}
 
 // [{key, seq}], Node -> [{key, seq}] <Mutate>
 function updateHeadsWithNode (heads, node) {
