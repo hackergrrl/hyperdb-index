@@ -63,7 +63,6 @@ Index.prototype._run = function () {
       pump(source, sink, onDone)
 
       function write (node, _, next) {
-        console.log('write', node.key, node.value)
         self._indexRunning = true
 
         self._processFn(node, function (err) {

@@ -17,7 +17,7 @@ test('adder', function (t) {
       if (typeof node.value === 'number') sum += node.value
       next()
 
-      if(!--pending) done()
+      if (!--pending) done()
     },
     getVersion: function (cb) { cb(null, version) },
     setVersion: function (s, cb) { version = s; cb(null) }
@@ -39,7 +39,7 @@ test('adder', function (t) {
 })
 
 test('adder /w slow versions', function (t) {
-  t.plan(4)
+  t.plan(6)
 
   var db = hyperdb(ram, { valueEncoding: 'json' })
 
@@ -51,7 +51,9 @@ test('adder /w slow versions', function (t) {
       if (typeof node.value === 'number') sum += node.value
       next()
     },
-    getVersion: function (cb) { setTimeout(function () { cb(null, version) }, 100) },
+    getVersion: function (cb) {
+      setTimeout(function () { cb(null, version) }, 100)
+    },
     setVersion: function (s, cb) { version = s; setTimeout(cb, 100) }
   })
 
@@ -64,6 +66,9 @@ test('adder /w slow versions', function (t) {
     t.error(err)
     if (!--pending) {
       idx.ready(function () {
+        var finalVersion = versions.deserialize(version)
+        t.equal(finalVersion.length, 1)
+        t.equal(finalVersion[0].seq, 2)
         t.equal(sum, 30)
       })
     }
@@ -71,7 +76,7 @@ test('adder /w slow versions', function (t) {
 })
 
 test('adder /w many concurrent PUTs', function (t) {
-  t.plan(201)
+  t.plan(203)
 
   var db = hyperdb(ram, { valueEncoding: 'json' })
 
@@ -83,7 +88,7 @@ test('adder /w many concurrent PUTs', function (t) {
       if (typeof node.value === 'number') sum += node.value
       next()
 
-      if(!--pending) done()
+      if (!--pending) done()
     },
     getVersion: function (cb) { cb(null, version) },
     setVersion: function (s, cb) { version = s; cb(null) }
@@ -99,13 +104,16 @@ test('adder /w many concurrent PUTs', function (t) {
 
   function done () {
     idx.ready(function () {
+      var finalVersion = versions.deserialize(version)
+      t.equal(finalVersion.length, 1)
+      t.equal(finalVersion[0].seq, 199)
       t.equal(sum, expectedSum)
     })
   }
 })
 
 test('adder /w index made AFTER db population', function (t) {
-  t.plan(201)
+  t.plan(203)
 
   var db = hyperdb(ram, { valueEncoding: 'json' })
 
@@ -133,13 +141,16 @@ test('adder /w index made AFTER db population', function (t) {
       setVersion: function (s, cb) { version = s; cb(null) }
     })
     idx.ready(function () {
+      var finalVersion = versions.deserialize(version)
+      t.equal(finalVersion.length, 1)
+      t.equal(finalVersion[0].seq, 199)
       t.equal(sum, expectedSum)
     })
   }
 })
 
 test('adder /w async storage', function (t) {
-  t.plan(4)
+  t.plan(6)
 
   var db = hyperdb(ram, { valueEncoding: 'json' })
 
@@ -147,13 +158,13 @@ test('adder /w async storage', function (t) {
   var version = null
 
   function getSum (cb) {
-    setTimeout(function () { cb(sum) }, Math.floor(Math.random() * 1000))
+    setTimeout(function () { cb(sum) }, Math.floor(Math.random() * 200))
   }
   function setSum (newSum, cb) {
     setTimeout(function () {
       sum = newSum
       cb()
-    }, Math.floor(Math.random() * 1000))
+    }, Math.floor(Math.random() * 200))
   }
 
   var idx = index(db, {
@@ -163,7 +174,7 @@ test('adder /w async storage', function (t) {
           theSum += node.value
           setSum(theSum, function () {
             next()
-            if(!--pending) done()
+            if (!--pending) done()
           })
         })
       }
@@ -179,13 +190,16 @@ test('adder /w async storage', function (t) {
 
   function done () {
     idx.ready(function () {
+      var finalVersion = versions.deserialize(version)
+      t.equal(finalVersion.length, 1)
+      t.equal(finalVersion[0].seq, 2)
       t.equal(sum, 30)
     })
   }
 })
 
 test('adder /w async storage: ready', function (t) {
-  t.plan(4)
+  t.plan(6)
 
   var db = hyperdb(ram, { valueEncoding: 'json' })
 
@@ -193,13 +207,13 @@ test('adder /w async storage: ready', function (t) {
   var version = null
 
   function getSum (cb) {
-    setTimeout(function () { cb(sum) }, Math.floor(Math.random() * 1000))
+    setTimeout(function () { cb(sum) }, Math.floor(Math.random() * 100))
   }
   function setSum (newSum, cb) {
     setTimeout(function () {
       sum = newSum
       cb()
-    }, Math.floor(Math.random() * 1000))
+    }, Math.floor(Math.random() * 100))
   }
 
   var idx = index(db, {
@@ -225,6 +239,9 @@ test('adder /w async storage: ready', function (t) {
         t.error(err)
         idx.ready(function () {
           getSum(function (theSum) {
+            var finalVersion = versions.deserialize(version)
+            t.equal(finalVersion.length, 1)
+            t.equal(finalVersion[0].seq, 2)
             t.equals(theSum, 30)
           })
         })
