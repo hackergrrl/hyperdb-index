@@ -37,14 +37,19 @@ Index.prototype._run = function () {
   var self = this
 
   // get the current head version
-  this._db.version(function (err, frontVersion) {
+  this._getVersion(function (err, startVersion) {
     if (err) return self.emit('error', err)
-    self._getVersion(function (err, startVersion) {
+    self._db.version(function (err, frontVersion) {
       if (err) return self.emit('error', err)
 
       // If the hyperdb version matches what's in storage, the index is up to
       // date
       if (startVersion && frontVersion.equals(startVersion)) {
+        self._indexRunning = false
+        self.emit('ready')
+      }
+
+      if (!frontVersion.length && !startVersion) {
         self._indexRunning = false
         self.emit('ready')
       }

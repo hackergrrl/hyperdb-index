@@ -4,6 +4,24 @@ var ram = require('random-access-memory')
 var index = require('..')
 var versions = require('../lib/version')
 
+test('empty + ready called', function (t) {
+  t.plan(1)
+
+  var db = hyperdb(ram, { valueEncoding: 'json' })
+  var version = null
+  var idx = index(db, {
+    processFn: function (node, next) {
+      next()
+    },
+    getVersion: function (cb) { cb(null, version) },
+    setVersion: function (s, cb) { version = s; cb(null) }
+  })
+
+  idx.ready(function () {
+    t.ok(true)
+  })
+})
+
 test('adder', function (t) {
   t.plan(6)
 
