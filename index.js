@@ -30,11 +30,6 @@ function Index (db, opts) {
 
   // Kick off the indexing
   this._run()
-
-  // TODO: some way to 'deactivate' the index; unwatch db
-  db.watch('/', function () {
-    // TODO: update frontVersion
-  })
 }
 inherits(Index, events.EventEmitter)
 
