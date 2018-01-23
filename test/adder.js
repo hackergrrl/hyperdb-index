@@ -3,6 +3,9 @@ var hyperdb = require('hyperdb')
 var ram = require('random-access-memory')
 var index = require('..')
 var versions = require('../lib/version')
+var tmp = require('os').tmpdir
+var rimraf = require('rimraf')
+var path = require('path')
 
 test('empty + ready called', function (t) {
   t.plan(1)
@@ -267,3 +270,56 @@ test('adder /w async storage: ready', function (t) {
     })
   })
 })
+
+test('fs: adder', function (t) {
+  t.plan(4)
+
+  var id = String(Math.random()).substring(2)
+  var dir = path.join(tmp(), 'hyperdb-index-test-' + id)
+  var db = hyperdb(dir, { valueEncoding: 'json' })
+
+  var sum = 0
+  var version = null
+
+  var idx = index(db, {
+    processFn: function (node, next) {
+      if (typeof node.value === 'number') sum += node.value
+      next()
+    },
+    getVersion: function (cb) {
+      setTimeout(function () { cb(null, version) }, 50)
+    },
+    setVersion: function (s, cb) {
+      setTimeout(function () { version = s; cb(null) }, 50)
+    }
+  })
+
+  var pending = 50
+  var expectedSum = 0
+  var batch = range(pending).map(function (_, n) {
+    var value = n * 2 + 1
+    expectedSum += value
+    return {
+      type: 'put',
+      key: '/foo/' + n,
+      value: value
+    }
+  })
+
+  db.batch(batch, done)
+
+  function done (err) {
+    t.error(err)
+    idx.ready(function () {
+      var finalVersion = versions.deserialize(version)
+      t.equal(finalVersion.length, 1)
+      t.equal(sum, expectedSum, 'sum of all nodes is as expected')
+      t.equal(finalVersion[0].seq, 49)
+      rimraf.sync(dir)
+    })
+  }
+})
+
+function range (n) {
+  return (new Array(n)).fill(0)
+}

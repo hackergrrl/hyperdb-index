@@ -25,6 +25,7 @@
   "devDependencies": {
     "hyperdb": "^2.0.0",
     "random-access-memory": "^2.4.0",
+    "rimraf": "^2.6.2",
     "standard": "~10.0.0",
     "standard-version": "^4.2.0",
     "tape": "~4.6.2"

@@ -47,9 +47,7 @@ Index.prototype._run = function () {
       if (startVersion && frontVersion.equals(startVersion)) {
         self._indexRunning = false
         self.emit('ready')
-      }
-
-      if (!frontVersion.length && !startVersion) {
+      } else if (!frontVersion.length && !startVersion) {
         self._indexRunning = false
         self.emit('ready')
       }
@@ -66,20 +64,34 @@ Index.prototype._run = function () {
         self._processFn(node, function (err) {
           if (err) return next(err)
 
+          var pending = 2
+          var headVersion
+
           // Incrementally update the current 'version' using this node
           heads = updateHeadsWithNode(heads || [], node)
           var latestVersion = versions.serialize(heads)
-          self._setVersion(latestVersion, next)
+          self._setVersion(latestVersion, function (err) {
+            if (err) return self.emit('error', err)
+            done()
+          })
 
           // Compare this version to what hyperdb's true heads are; emit
           // 'ready' if they match
-          self._db.version(function (err, headVersion) {
+          self._db.version(function (err, theHeadVersion) {
             if (err) return self.emit('error', err)
-            if (latestVersion.equals(headVersion)) {
-              self._indexRunning = false
-              self.emit('ready')
-            }
+            headVersion = theHeadVersion
+            done()
           })
+
+          function done () {
+            if (!--pending) {
+              if (latestVersion.equals(headVersion)) {
+                self._indexRunning = false
+                self.emit('ready')
+              }
+              next()
+            }
+          }
         })
       }
 
