@@ -103,8 +103,32 @@ Index.prototype._run = function () {
 }
 
 Index.prototype.ready = function (cb) {
-  if (!this._indexRunning) process.nextTick(cb)
-  else this.once('ready', cb)
+  if (!this._indexRunning) {
+    var self = this
+
+    // XXX: this is a workaround because there is a time delay between when a
+    // new node is added to hyperdb and when hyperdb#createHistoryStream
+    // receives that node; so we need to check the stored version against the
+    // db's version when the index claims to be finished indexing.
+
+    // get the current head version
+    this._getVersion(function (err, startVersion) {
+      if (err) return self.emit('error', err)
+      if (startVersion && !Buffer.isBuffer(startVersion)) {
+        startVersion = Buffer.from(startVersion)
+      }
+      self._db.version(function (err, frontVersion) {
+        if (err) return self.emit('error', err)
+        if (startVersion && frontVersion.equals(startVersion)) {
+          process.nextTick(cb)
+        } else if (!frontVersion.length && !startVersion) {
+          process.nextTick(cb)
+        } else {
+          self.once('ready', cb)
+        }
+      })
+    })
+  } else this.once('ready', cb)
 }
 
 // [{key, seq}], Node -> [{key, seq}] <Mutate>
