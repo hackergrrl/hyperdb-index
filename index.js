@@ -154,12 +154,8 @@ function updateHeadsWithNode (heads, node) {
           break
         }
       }
-      if (!match) {
-        if (node.feed === i) {
-          newHeads.push({ key: feed.key, seq: node.seq })
-        } else {
-          throw new Error('this should never happen')
-        }
+      if (!match && node.feed === i) {
+        newHeads.push({ key: feed.key, seq: node.seq })
       }
     }
   }

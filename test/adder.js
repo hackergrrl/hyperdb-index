@@ -320,6 +320,84 @@ test('fs: adder', function (t) {
   }
 })
 
+test('adder + sync', function (t) {
+  t.plan(12)
+
+  createTwo(function (db1, db2) {
+    var sum1 = 0
+    var sum2 = 0
+    var version1 = null
+    var version2 = null
+
+    var idx1 = index(db1, {
+      processFn: function (node, next) {
+        if (typeof node.value === 'number') sum1 += node.value
+        next()
+
+        if (!--pending) done()
+      },
+      getVersion: function (cb) { cb(null, version1) },
+      setVersion: function (s, cb) { version1 = s; cb(null) }
+    })
+
+    var idx2 = index(db2, {
+      processFn: function (node, next) {
+        if (typeof node.value === 'number') sum2 += node.value
+        next()
+
+        if (!--pending) done()
+      },
+      getVersion: function (cb) { cb(null, version2) },
+      setVersion: function (s, cb) { version2 = s; cb(null) }
+    })
+
+    var pending = 5
+    db1.put('/foo/bar', 17, function (err) { t.error(err) })
+    db1.put('/foo/baz', 12, function (err) { t.error(err) })
+    db1.put('/bax/12', 1, function (err) { t.error(err) })
+    db2.put('/bar/bee', 9, function (err) { t.error(err) })
+
+    function done () {
+      replicate(db1, db2, function () {
+        idx1.ready(function () {
+          idx2.ready(function () {
+            var finalVersion = versions.deserialize(version1)
+            t.equal(finalVersion.length, 2)
+            t.equal(finalVersion[0].seq, 3)
+            t.equal(finalVersion[1].seq, 0)
+            t.equal(sum1, 39)
+
+            finalVersion = versions.deserialize(version2)
+            t.equal(finalVersion.length, 2)
+            t.equal(finalVersion[0].seq, 3)
+            t.equal(finalVersion[1].seq, 0)
+            t.equal(sum2, 39)
+
+            t.end()
+          })
+        })
+      })
+    }
+  })
+})
+
 function range (n) {
   return (new Array(n)).fill(0)
+}
+
+function createTwo (cb) {
+  var a = hyperdb(ram, {valueEncoding: 'json'})
+  a.ready(function () {
+    var b = hyperdb(ram, a.key, {valueEncoding: 'json'})
+    b.ready(function () {
+      a.authorize(b.local.key, function () {
+        cb(a, b)
+      })
+    })
+  })
+}
+
+function replicate (a, b, cb) {
+  var stream = a.replicate()
+  stream.pipe(b.replicate()).pipe(stream).on('end', cb)
 }
