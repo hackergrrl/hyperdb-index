@@ -2,7 +2,7 @@
   "name": "hyperdb-index",
   "description": "Build a realtime index over a hyperdb key prefix.",
   "author": "Stephen Whitmore <sww@eight.net>",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "repository": {
     "url": "git://github.com/noffle/hyperdb-index.git"
   },
