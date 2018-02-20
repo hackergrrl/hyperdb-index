@@ -112,13 +112,13 @@ Index.prototype.ready = function (cb) {
     // db's version when the index claims to be finished indexing.
 
     // get the current head version
-    this._getVersion(function (err, startVersion) {
+    self._db.version(function (err, frontVersion) {
       if (err) return self.emit('error', err)
-      if (startVersion && !Buffer.isBuffer(startVersion)) {
-        startVersion = Buffer.from(startVersion)
-      }
-      self._db.version(function (err, frontVersion) {
+      self._getVersion(function (err, startVersion) {
         if (err) return self.emit('error', err)
+        if (startVersion && !Buffer.isBuffer(startVersion)) {
+          startVersion = Buffer.from(startVersion)
+        }
         if (startVersion && frontVersion.equals(startVersion)) {
           process.nextTick(cb)
         } else if (!frontVersion.length && !startVersion) {
