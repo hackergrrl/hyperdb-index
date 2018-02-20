@@ -25,6 +25,7 @@ function Index (db, opts) {
   this._processFn = opts.processFn
   this._getVersion = opts.getVersion
   this._setVersion = opts.setVersion
+  this._lastIdxVersion = null
 
   this._indexRunning = true
 
@@ -39,6 +40,7 @@ Index.prototype._run = function () {
   // get the current head version
   this._getVersion(function (err, startVersion) {
     if (err) return self.emit('error', err)
+    self._lastIdxVersion = startVersion
     self._db.version(function (err, frontVersion) {
       if (err) return self.emit('error', err)
 
@@ -72,6 +74,7 @@ Index.prototype._run = function () {
           var latestVersion = versions.serialize(heads)
           self._setVersion(latestVersion, function (err) {
             if (err) return self.emit('error', err)
+            self._lastIdxVersion = latestVersion
             done()
           })
 
@@ -114,19 +117,13 @@ Index.prototype.ready = function (cb) {
     // get the current head version
     self._db.version(function (err, frontVersion) {
       if (err) return self.emit('error', err)
-      self._getVersion(function (err, startVersion) {
-        if (err) return self.emit('error', err)
-        if (startVersion && !Buffer.isBuffer(startVersion)) {
-          startVersion = Buffer.from(startVersion)
-        }
-        if (startVersion && frontVersion.equals(startVersion)) {
-          process.nextTick(cb)
-        } else if (!frontVersion.length && !startVersion) {
-          process.nextTick(cb)
-        } else {
-          self.once('ready', cb)
-        }
-      })
+      if (self._lastIdxVersion && frontVersion.equals(self._lastIdxVersion)) {
+        process.nextTick(cb)
+      } else if (!frontVersion.length && !self._lastIdxVersion) {
+        process.nextTick(cb)
+      } else {
+        self.once('ready', cb)
+      }
     })
   } else this.once('ready', cb)
 }
