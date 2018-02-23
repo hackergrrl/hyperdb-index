@@ -53,7 +53,7 @@ test('adder', function (t) {
     idx.ready(function () {
       var finalVersion = versions.deserialize(version)
       t.equal(finalVersion.length, 1)
-      t.equal(finalVersion[0].seq, 2)
+      t.equal(finalVersion[0], 3)
       t.equal(sum, 30)
     })
   }
@@ -89,7 +89,7 @@ test('adder /w slow versions', function (t) {
       idx.ready(function () {
         var finalVersion = versions.deserialize(version)
         t.equal(finalVersion.length, 1)
-        t.equal(finalVersion[0].seq, 2)
+        t.equal(finalVersion[0], 3)
         t.equal(sum, 30)
       })
     }
@@ -127,7 +127,7 @@ test('adder /w many concurrent PUTs', function (t) {
     idx.ready(function () {
       var finalVersion = versions.deserialize(version)
       t.equal(finalVersion.length, 1)
-      t.equal(finalVersion[0].seq, 199)
+      t.equal(finalVersion[0], 200)
       t.equal(sum, expectedSum)
     })
   }
@@ -164,7 +164,7 @@ test('adder /w index made AFTER db population', function (t) {
     idx.ready(function () {
       var finalVersion = versions.deserialize(version)
       t.equal(finalVersion.length, 1)
-      t.equal(finalVersion[0].seq, 199)
+      t.equal(finalVersion[0], 200)
       t.equal(sum, expectedSum)
     })
   }
@@ -213,7 +213,7 @@ test('adder /w async storage', function (t) {
     idx.ready(function () {
       var finalVersion = versions.deserialize(version)
       t.equal(finalVersion.length, 1)
-      t.equal(finalVersion[0].seq, 2)
+      t.equal(finalVersion[0], 3)
       t.equal(sum, 30)
     })
   }
@@ -262,7 +262,7 @@ test('adder /w async storage: ready', function (t) {
           getSum(function (theSum) {
             var finalVersion = versions.deserialize(version)
             t.equal(finalVersion.length, 1)
-            t.equal(finalVersion[0].seq, 2)
+            t.equal(finalVersion[0], 3)
             t.equals(theSum, 30)
           })
         })
@@ -314,7 +314,7 @@ test('fs: adder', function (t) {
       var finalVersion = versions.deserialize(version)
       t.equal(finalVersion.length, 1)
       t.equal(sum, expectedSum, 'sum of all nodes is as expected')
-      t.equal(finalVersion[0].seq, 49)
+      t.equal(finalVersion[0], 50)
       rimraf.sync(dir)
     })
   }
@@ -363,14 +363,14 @@ test('adder + sync', function (t) {
           idx2.ready(function () {
             var finalVersion = versions.deserialize(version1)
             t.equal(finalVersion.length, 2)
-            t.equal(finalVersion[0].seq, 3)
-            t.equal(finalVersion[1].seq, 0)
+            t.equal(finalVersion[0], 4)
+            t.equal(finalVersion[1], 1)
             t.equal(sum1, 39)
 
             finalVersion = versions.deserialize(version2)
             t.equal(finalVersion.length, 2)
-            t.equal(finalVersion[0].seq, 3)
-            t.equal(finalVersion[1].seq, 0)
+            t.equal(finalVersion[0], 4)
+            t.equal(finalVersion[1], 1)
             t.equal(sum2, 39)
 
             t.end()

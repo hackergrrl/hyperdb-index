@@ -41,121 +41,83 @@ Index.prototype._run = function () {
   this._getVersion(function (err, startVersion) {
     if (err) return self.emit('error', err)
     self._lastIdxVersion = startVersion
-    self._db.version(function (err, frontVersion) {
-      if (err) return self.emit('error', err)
+    var frontVersion = versions.serialize(getAllHeads(self._db))
 
-      // If the hyperdb version matches what's in storage, the index is up to
-      // date
-      if (startVersion && frontVersion.equals(startVersion)) {
-        self._indexRunning = false
-        self.emit('ready')
-      } else if (!frontVersion.length && !startVersion) {
-        self._indexRunning = false
-        self.emit('ready')
-      }
+    // If the hyperdb version matches what's in storage, the index is up to
+    // date
+    if (startVersion && frontVersion.equals(startVersion)) {
+      self._indexRunning = false
+      self.emit('ready')
+    } else if (!frontVersion.length && !startVersion) {
+      self._indexRunning = false
+      self.emit('ready')
+    }
 
-      var heads = startVersion ? versions.deserialize(startVersion) : null
+    var heads = startVersion ? versions.deserialize(startVersion) : null
 
-      var source = self._db.createHistoryStream({start: startVersion, live: true})
-      var sink = through.obj(write)
-      pump(source, sink, onDone)
+    var source = self._db.createHistoryStream({start: startVersion, live: true})
+    var sink = through.obj(write)
+    pump(source, sink, onDone)
 
-      function write (node, _, next) {
-        self._indexRunning = true
+    function write (node, _, next) {
+      self._indexRunning = true
 
-        self._processFn(node, function (err) {
-          if (err) return next(err)
+      self._processFn(node, function (err) {
+        if (err) return next(err)
 
-          var pending = 2
-          var headVersion
-
-          // Incrementally update the current 'version' using this node
-          heads = updateHeadsWithNode(heads || [], node)
-          var latestVersion = versions.serialize(heads)
-          self._setVersion(latestVersion, function (err) {
-            if (err) return self.emit('error', err)
-            self._lastIdxVersion = latestVersion
-            done()
-          })
-
-          // Compare this version to what hyperdb's true heads are; emit
-          // 'ready' if they match
-          self._db.version(function (err, theHeadVersion) {
-            if (err) return self.emit('error', err)
-            headVersion = theHeadVersion
-            done()
-          })
-
-          function done () {
-            if (!--pending) {
-              if (latestVersion.equals(headVersion)) {
-                self._indexRunning = false
-                self.emit('ready')
-              }
-              next()
-            }
+        // Incrementally update the current 'version' using this node
+        heads = updateHeadsWithNode(heads || [], node)
+        var latestVersion = versions.serialize(heads)
+        self._setVersion(latestVersion, function (err) {
+          if (err) return self.emit('error', err)
+          self._lastIdxVersion = latestVersion
+          var headVersion = versions.serialize(getAllHeads(self._db))
+          if (latestVersion.equals(headVersion)) {
+            self._indexRunning = false
+            self.emit('ready')
           }
+          next()
         })
-      }
+      })
+    }
 
-      function onDone (err) {
-        self.emit('error', err)
-      }
-    })
+    function onDone (err) {
+      self.emit('error', err)
+    }
   })
 }
 
 Index.prototype.ready = function (cb) {
   if (!this._indexRunning) {
-    var self = this
-
     // XXX: this is a workaround because there is a time delay between when a
     // new node is added to hyperdb and when hyperdb#createHistoryStream
     // receives that node; so we need to check the stored version against the
     // db's version when the index claims to be finished indexing.
 
     // get the current head version
-    self._db.version(function (err, frontVersion) {
-      if (err) return self.emit('error', err)
-      if (self._lastIdxVersion && frontVersion.equals(self._lastIdxVersion)) {
-        process.nextTick(cb)
-      } else if (!frontVersion.length && !self._lastIdxVersion) {
-        process.nextTick(cb)
-      } else {
-        self.once('ready', cb)
-      }
-    })
-  } else this.once('ready', cb)
+    var frontVersion = versions.serialize(getAllHeads(this._db))
+    if (this._lastIdxVersion && frontVersion.equals(this._lastIdxVersion)) {
+      process.nextTick(cb)
+    } else if (!frontVersion.length && !this._lastIdxVersion) {
+      process.nextTick(cb)
+    } else {
+      this.once('ready', cb)
+    }
+  } else {
+    this.once('ready', cb)
+  }
 }
 
-// [{key, seq}], Node -> [{key, seq}] <Mutate>
+// [Number], Node -> [Number] <Mutate>
 function updateHeadsWithNode (heads, node) {
-  var newHeads = []
+  heads[node.feed] = node.seq + 1
+  return heads
+}
 
-  if (!node.feeds.length) {
-    heads[node.feed].seq = node.seq
-    newHeads = heads
-  } else {
-    for (var i = 0; i < node.feeds.length; i++) {
-      var feed = node.feeds[i]
-      var match = false
-      for (var j = 0; j < heads.length; j++) {
-        var head = heads[j]
-        if (feed.key.equals(head.key)) {
-          match = true
-          if (node.feed === i) {
-            newHeads.push({ key: feed.key, seq: node.seq })
-          } else {
-            newHeads.push({ key: feed.key, seq: heads[j].seq })
-          }
-          break
-        }
-      }
-      if (!match && node.feed === i) {
-        newHeads.push({ key: feed.key, seq: node.seq })
-      }
-    }
+function getAllHeads (db) {
+  var heads = []
+  for (var i = 0; i < db._writers.length; i++) {
+    heads[i] = db._writers[i].feed.length
   }
-
-  return newHeads
+  return heads
 }
