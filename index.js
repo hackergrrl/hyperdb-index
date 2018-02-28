@@ -37,54 +37,56 @@ inherits(Index, events.EventEmitter)
 Index.prototype._run = function () {
   var self = this
 
-  // get the current head version
-  this._getVersion(function (err, startVersion) {
-    if (err) return self.emit('error', err)
-    self._lastIdxVersion = startVersion
-    var frontVersion = versions.serialize(getAllHeads(self._db))
+  this._db.ready(function () {
+    // get the current head version
+    self._getVersion(function (err, startVersion) {
+      if (err) return self.emit('error', err)
+      self._lastIdxVersion = startVersion
+      var frontVersion = versions.serialize(getAllHeads(self._db))
 
-    // If the hyperdb version matches what's in storage, the index is up to
-    // date
-    if (startVersion && frontVersion.equals(startVersion)) {
-      self._indexRunning = false
-      self.emit('ready')
-    } else if (!frontVersion.length && !startVersion) {
-      self._indexRunning = false
-      self.emit('ready')
-    }
+      // If the hyperdb version matches what's in storage, the index is up to
+      // date
+      if (startVersion && frontVersion.equals(startVersion)) {
+        self._indexRunning = false
+        self.emit('ready')
+      } else if (!frontVersion.length && !startVersion) {
+        self._indexRunning = false
+        self.emit('ready')
+      }
 
-    var heads = startVersion ? versions.deserialize(startVersion) : null
-    var hyperdbStartVersion = heads ? versions.serializeHyperdb(self._db, heads) : null
+      var heads = startVersion ? versions.deserialize(startVersion) : null
+      var hyperdbStartVersion = heads ? versions.serializeHyperdb(self._db, heads) : null
 
-    var source = self._db.createHistoryStream({start: hyperdbStartVersion, live: true})
-    var sink = through.obj(write)
-    pump(source, sink, onDone)
+      var source = self._db.createHistoryStream({start: hyperdbStartVersion, live: true})
+      var sink = through.obj(write)
+      pump(source, sink, onDone)
 
-    function write (node, _, next) {
-      self._indexRunning = true
+      function write (node, _, next) {
+        self._indexRunning = true
 
-      self._processFn(node, function (err) {
-        if (err) return next(err)
+        self._processFn(node, function (err) {
+          if (err) return next(err)
 
-        // Incrementally update the current 'version' using this node
-        heads = updateHeadsWithNode(heads || [], node)
-        var latestVersion = versions.serialize(heads)
-        self._setVersion(latestVersion, function (err) {
-          if (err) return self.emit('error', err)
-          self._lastIdxVersion = latestVersion
-          var headVersion = versions.serialize(getAllHeads(self._db))
-          if (latestVersion.equals(headVersion)) {
-            self._indexRunning = false
-            self.emit('ready')
-          }
-          next()
+          // Incrementally update the current 'version' using this node
+          heads = updateHeadsWithNode(heads || [], node)
+          var latestVersion = versions.serialize(heads)
+          self._setVersion(latestVersion, function (err) {
+            if (err) return self.emit('error', err)
+            self._lastIdxVersion = latestVersion
+            var headVersion = versions.serialize(getAllHeads(self._db))
+            if (latestVersion.equals(headVersion)) {
+              self._indexRunning = false
+              self.emit('ready')
+            }
+            next()
+          })
         })
-      })
-    }
+      }
 
-    function onDone (err) {
-      self.emit('error', err)
-    }
+      function onDone (err) {
+        self.emit('error', err)
+      }
+    })
   })
 }
 
