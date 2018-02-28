@@ -59,6 +59,50 @@ test('adder', function (t) {
   }
 })
 
+test('adder: picks up where it left off', function (t) {
+  t.plan(5)
+
+  var db = hyperdb(ram, { valueEncoding: 'json' })
+
+  var version = null
+
+  var idx = index(db, {
+    processFn: function (node, next) {
+      next()
+      if (!--pending) done()
+    },
+    getVersion: function (cb) { cb(null, version) },
+    setVersion: function (s, cb) { version = s; cb(null) }
+  })
+
+  var pending = 3
+  db.put('/foo/bar', 17, function (err) { t.error(err) })
+  db.put('/foo/baz', 12, function (err) { t.error(err) })
+  db.put('/bax/12', 1, function (err) { t.error(err) })
+
+  function done () {
+    idx.ready(function () {
+      var pending = 1
+      var sum = 0
+      var idx2 = index(db, {
+        processFn: function (node, next) {
+          if (typeof node.value === 'number') sum += node.value
+          next()
+
+          if (!--pending) {
+            t.equals(sum, 7)
+          }
+        },
+        getVersion: function (cb) { cb(null, version) },
+        setVersion: function (s, cb) { version = s; cb(null) }
+      })
+      idx2.ready(function () {
+        db.put('/bax/15', 7, function (err) { t.error(err) })
+      })
+    })
+  }
+})
+
 test('adder /w slow versions', function (t) {
   t.plan(6)
 

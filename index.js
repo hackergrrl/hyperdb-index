@@ -54,8 +54,9 @@ Index.prototype._run = function () {
     }
 
     var heads = startVersion ? versions.deserialize(startVersion) : null
+    var hyperdbStartVersion = heads ? versions.serializeHyperdb(self._db, heads) : null
 
-    var source = self._db.createHistoryStream({start: startVersion, live: true})
+    var source = self._db.createHistoryStream({start: hyperdbStartVersion, live: true})
     var sink = through.obj(write)
     pump(source, sink, onDone)
 
